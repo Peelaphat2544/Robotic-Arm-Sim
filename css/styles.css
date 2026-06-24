@@ -1,0 +1,187 @@
+/* ==============================================
+   3D Robotic Arm Simulation — Consolidated CSS
+   Merged from V1, V2, and V5
+   ============================================== */
+
+/* --- Base --- */
+body {
+    font-family: 'Noto Sans Thai', sans-serif;
+    margin: 0;
+    overflow: hidden;
+    background-color: #0f172a;
+}
+
+#canvas-container {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* --- Glass Panel (Frosted Glass UI) --- */
+.glass-panel {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- Custom Scrollbar --- */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 10px;
+}
+
+/* --- Hover Tooltip --- */
+#hover-tooltip {
+    position: absolute;
+    pointer-events: none;
+    z-index: 50;
+    background: rgba(15, 23, 42, 0.9);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    display: none;
+    transform: translate(15px, 15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* --- Range Slider --- */
+input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    background: transparent;
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    margin-top: -6px;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.5);
+    transition: transform 0.15s ease;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: #475569;
+    border-radius: 2px;
+}
+
+/* Firefox range slider */
+input[type=range]::-moz-range-thumb {
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.5);
+}
+input[type=range]::-moz-range-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: #475569;
+    border-radius: 2px;
+    border: none;
+}
+
+/* --- Challenge Cards --- */
+.challenge-card {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border-left: 4px solid transparent;
+}
+.challenge-card:hover {
+    background: rgba(59, 130, 246, 0.1);
+}
+.challenge-card.active {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.2);
+}
+
+/* --- Modal Overlay --- */
+#modal-overlay {
+    display: none;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+}
+#modal-overlay.active {
+    display: flex;
+}
+
+/* --- AI Gradient & Text --- */
+.ai-gradient {
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+}
+.ai-text {
+    background: linear-gradient(135deg, #a5b4fc 0%, #d8b4fe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* --- Typewriter Effect --- */
+.typewriter p {
+    overflow: hidden;
+    border-right: 0.15em solid orange;
+    white-space: pre-wrap;
+    margin: 0 auto;
+    letter-spacing: 0.05em;
+    animation: blink-caret 0.75s step-end infinite;
+}
+@keyframes blink-caret {
+    from, to { border-color: transparent; }
+    50% { border-color: #a855f7; }
+}
+
+/* --- Star Rating --- */
+.star-rating i {
+    color: #475569;
+    transition: color 0.3s ease;
+}
+.star-rating i.active {
+    color: #fbbf24;
+}
+
+/* --- Language Toggle Button --- */
+.lang-toggle {
+    transition: all 0.3s ease;
+}
+.lang-toggle:hover {
+    transform: scale(1.05);
+    border-color: rgba(96, 165, 250, 0.4);
+}
+
+/* --- Algorithm Block Highlight (Running State) --- */
+.block-running {
+    border-color: #10b981 !important;
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    transition: all 0.2s ease;
+}
+
+/* --- API Key Indicator --- */
+.api-key-active {
+    color: #34d399;
+}
+.api-key-inactive {
+    color: #94a3b8;
+}

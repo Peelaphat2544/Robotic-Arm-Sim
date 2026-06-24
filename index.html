@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Robotic Arm Simulation</title>
+    <meta name="description" content="Interactive 3D robotic arm simulation for learning kinematics, algorithms, and robotics principles. Supports Thai and English.">
+
+    <!-- Tailwind CSS (Utility Classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- App Stylesheet -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="text-slate-200">
+
+    <!-- ============================================ -->
+    <!--  HOVER TOOLTIP                               -->
+    <!-- ============================================ -->
+    <div id="hover-tooltip">
+        <div class="flex items-center gap-2">
+            <i class="ph ph-crosshair text-blue-400"></i>
+            <span id="tooltip-text" class="font-mono">พิกัด (X, Y)</span>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!--  3D CANVAS CONTAINER                         -->
+    <!-- ============================================ -->
+    <div id="canvas-container"></div>
+
+    <!-- ============================================ -->
+    <!--  HEADER OVERLAY                              -->
+    <!-- ============================================ -->
+    <div class="absolute top-4 left-6 z-10 flex justify-between w-[calc(100%-3rem)] pointer-events-none">
+        <!-- Title & Subtitle -->
+        <div>
+            <h1 class="text-2xl font-bold text-white drop-shadow-md flex items-center gap-2 pointer-events-auto">
+                <i class="ph ph-robot text-blue-400"></i>
+                <span data-i18n="title">Robotic Arm Simulation</span>
+                <span class="text-xs bg-emerald-600/80 px-2 py-1 rounded-full border border-emerald-400 ml-2 shadow-lg"
+                      data-i18n="badge">ระบบจัดการโจทย์ 10 ข้อ</span>
+            </h1>
+            <p class="text-sm text-slate-300 pointer-events-auto"
+               data-i18n="subtitle">เรียนรู้อัลกอริทึมแขนกล พร้อมระบบพิกัด X, Y</p>
+            <p class="text-xs text-slate-400 mt-1 pointer-events-auto">
+                <i class="ph ph-user"></i> <span data-i18n="creatorName">สร้างโดย พีลพัทร์ แก้วคง</span>
+            </p>
+        </div>
+
+        <!-- Right Controls -->
+        <div class="pointer-events-auto flex gap-2 items-start">
+            <!-- Speed Control -->
+            <div class="glass-panel px-4 py-2 rounded-lg flex items-center gap-3">
+                <i class="ph ph-gauge text-slate-400"></i>
+                <div class="flex flex-col w-24">
+                    <input type="range" id="sim-speed" min="0.5" max="3" step="0.5" value="1">
+                    <div class="text-[10px] text-slate-400 text-center mt-1 w-full flex justify-between">
+                        <span data-i18n="speedSlow">ช้า</span>
+                        <span id="speed-display">1x</span>
+                        <span data-i18n="speedFast">เร็ว</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Language Toggle (from V1) -->
+            <button id="btn-lang" class="lang-toggle glass-panel px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 transition flex items-center gap-2"
+                    title="Switch Language">
+                <i class="ph ph-translate"></i>
+                <span data-i18n="langToggle">EN</span>
+            </button>
+
+            <!-- API Key Settings -->
+            <button id="btn-apikey-settings" class="glass-panel px-3 py-2 rounded-lg text-sm hover:bg-slate-700 transition"
+                    title="Gemini API Key">
+                <i class="ph ph-key api-key-inactive"></i>
+            </button>
+
+            <!-- Admin / Teacher Login -->
+            <button id="btn-login-modal" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-4 py-2 rounded-lg text-sm transition flex items-center gap-2">
+                <i class="ph ph-user-gear"></i>
+                <span data-i18n="adminBtn">โหมดครู (Admin)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!--  LEFT PANEL — CHALLENGES                     -->
+    <!-- ============================================ -->
+    <div class="absolute top-20 left-4 z-10 w-72 glass-panel rounded-xl shadow-2xl flex flex-col max-h-[80vh]">
+        <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50 rounded-t-xl">
+            <h2 class="font-bold text-white flex items-center gap-2">
+                <i class="ph ph-target text-red-400"></i>
+                <span data-i18n="challengesTitle">ภารกิจ (Challenges)</span>
+            </h2>
+            <button id="btn-add-challenge" class="hidden text-emerald-400 hover:text-emerald-300 text-sm"
+                    title="เพิ่มโจทย์">
+                <i class="ph ph-plus-circle text-lg"></i>
+            </button>
+        </div>
+        <div id="challenge-list" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+            <div class="text-center text-sm text-slate-400 py-4">
+                <i class="ph ph-spinner animate-spin"></i>
+                <span data-i18n="loadingChallenges">กำลังโหลดโจทย์...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!--  RIGHT PANEL — ALGORITHM BUILDER             -->
+    <!-- ============================================ -->
+    <div class="absolute top-20 right-4 z-10 w-96 glass-panel rounded-xl flex flex-col max-h-[80vh] shadow-2xl">
+        <!-- Panel Header -->
+        <div class="p-0 border-b border-slate-700 bg-slate-800/50 rounded-t-xl flex flex-col">
+            <div class="p-4 flex justify-between items-center pb-2">
+                <h2 class="font-bold text-white flex items-center gap-2">
+                    <i class="ph ph-robot text-blue-400"></i>
+                    <span data-i18n="controlTitle">ควบคุมแขนกล</span>
+                </h2>
+                <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300" id="block-counter">0 บล็อก</span>
+            </div>
+            <div class="flex text-sm border-t border-slate-700/50">
+                <button id="tab-algo" class="flex-1 py-2 text-center text-blue-400 border-b-2 border-blue-400 font-medium bg-slate-800/30 transition">
+                    <i class="ph ph-code-block mr-1"></i> <span data-i18n="tabAlgo">เขียนโปรแกรม</span>
+                </button>
+                <button id="tab-manual" class="flex-1 py-2 text-center text-slate-400 border-b-2 border-transparent hover:text-slate-200 transition">
+                    <i class="ph ph-sliders mr-1"></i> <span data-i18n="tabManual">ปรับเอง (Manual)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Panel Body: ALGO -->
+        <div id="panel-algo" class="p-4 flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+            <!-- Add Block UI -->
+            <div class="bg-slate-800 p-3 rounded-lg mb-4 border border-slate-700 shadow-inner">
+                <div class="flex gap-2 mb-2">
+                    <select id="algo-action" class="flex-1 bg-slate-900 border border-slate-600 rounded text-sm px-2 py-1.5 text-white">
+                        <option value="base"           data-i18n-option="actionBase">1. หมุนฐาน (Base)</option>
+                        <option value="shoulder"       data-i18n-option="actionShoulder">2. หมุนไหล่ (Shoulder)</option>
+                        <option value="elbow"          data-i18n-option="actionElbow">3. หมุนศอก (Elbow)</option>
+                        <option value="wrist"          data-i18n-option="actionWrist">4. หมุนข้อมือ (Wrist)</option>
+                        <option value="gripper_close"  data-i18n-option="actionGripperClose">5. ปิดมือจับ (หยิบวัตถุ)</option>
+                        <option value="gripper_open"   data-i18n-option="actionGripperOpen">6. เปิดมือจับ (ปล่อยวัตถุ)</option>
+                    </select>
+                    <input type="number" id="algo-value"
+                           data-i18n-placeholder="degreePlaceholder"
+                           placeholder="องศา"
+                           class="w-20 bg-slate-900 border border-slate-600 rounded text-sm px-2 py-1 text-white text-center"
+                           value="0">
+                </div>
+                <button id="btn-add-block"
+                        class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-sm font-medium transition flex items-center justify-center gap-2">
+                    <i class="ph ph-plus"></i>
+                    <span data-i18n="addBlock">เพิ่มคำสั่งลงในอัลกอริทึม</span>
+                </button>
+            </div>
+
+            <!-- Block List -->
+            <div id="block-list" class="space-y-2 mb-4 flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-[150px]">
+                <div class="text-center text-sm text-slate-500 mt-4"
+                     data-i18n="noBlocks">ยังไม่มีคำสั่ง (เพิ่มคำสั่งด้านบน)</div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col gap-2 mt-auto">
+                <!-- AI Tutor -->
+                <button id="btn-ai-tutor"
+                        class="w-full border border-purple-500/50 bg-purple-900/30 hover:bg-purple-800/50 text-purple-200 py-2 rounded-lg font-medium transition flex items-center justify-center gap-2 text-sm">
+                    <span data-i18n="aiTutor">✨ ให้ AI ช่วยแนะนำ (Gemini Tutor)</span>
+                </button>
+
+                <!-- Run / Clear -->
+                <div class="flex gap-2">
+                    <button id="btn-run-algo"
+                            class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/50">
+                        <i class="ph ph-play-circle text-xl"></i>
+                        <span data-i18n="runAlgo">ทดสอบการทำงาน</span>
+                    </button>
+                    <button id="btn-clear-algo"
+                            class="px-4 bg-red-900/50 hover:bg-red-800 text-red-200 rounded-lg transition"
+                            title="ล้างคำสั่งทั้งหมด">
+                        <i class="ph ph-trash text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Body: MANUAL -->
+        <div id="panel-manual" class="p-4 flex-1 overflow-y-auto custom-scrollbar flex-col hidden space-y-6">
+            <div>
+                <label class="flex justify-between text-xs text-slate-400 mb-2">
+                    <span data-i18n="sliderBase">ฐาน (Base)</span>
+                    <span id="val-base" class="text-white font-mono bg-slate-700 px-1.5 rounded">0°</span>
+                </label>
+                <input type="range" id="slider-base" min="-180" max="180" value="0" class="w-full">
+            </div>
+            <div>
+                <label class="flex justify-between text-xs text-slate-400 mb-2">
+                    <span data-i18n="sliderShoulder">ไหล่ (Shoulder)</span>
+                    <span id="val-shoulder" class="text-white font-mono bg-slate-700 px-1.5 rounded">30°</span>
+                </label>
+                <input type="range" id="slider-shoulder" min="-90" max="90" value="30" class="w-full">
+            </div>
+            <div>
+                <label class="flex justify-between text-xs text-slate-400 mb-2">
+                    <span data-i18n="sliderElbow">ศอก (Elbow)</span>
+                    <span id="val-elbow" class="text-white font-mono bg-slate-700 px-1.5 rounded">-45°</span>
+                </label>
+                <input type="range" id="slider-elbow" min="-150" max="150" value="-45" class="w-full">
+            </div>
+            <div>
+                <label class="flex justify-between text-xs text-slate-400 mb-2">
+                    <span data-i18n="sliderWrist">ข้อมือ (Wrist)</span>
+                    <span id="val-wrist" class="text-white font-mono bg-slate-700 px-1.5 rounded">15°</span>
+                </label>
+                <input type="range" id="slider-wrist" min="-90" max="90" value="15" class="w-full">
+            </div>
+            <div class="mt-auto pt-4 border-t border-slate-700">
+                 <!-- Gripper Toggle (manual control) -->
+                 <button id="btn-gripper-manual"
+                        class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-medium transition flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+                    <i class="ph ph-hand-grabbing"></i>
+                    <span data-i18n="gripperToggle">สลับมือจับ (Gripper)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Panel Footer -->
+        <div class="p-3 border-t border-slate-700 bg-slate-800/50 rounded-b-xl flex items-center justify-between">
+            <div id="status-msg" class="text-sm font-bold text-blue-400"
+                 data-i18n="statusReady">รอรับคำสั่ง...</div>
+            <button id="btn-reset-pos"
+                    class="text-xs text-slate-400 hover:text-white transition underline flex items-center gap-1">
+                <i class="ph ph-arrow-counter-clockwise"></i>
+                <span data-i18n="resetPos">รีเซ็ตตำแหน่ง</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!--  MODALS                                      -->
+    <!-- ============================================ -->
+    <div id="modal-overlay" class="fixed inset-0 z-50 items-center justify-center pointer-events-auto">
+
+        <!-- Auth Modal -->
+        <div id="modal-auth" class="bg-slate-800 border border-slate-600 p-6 rounded-xl shadow-2xl w-80 hidden">
+            <h2 class="text-xl font-bold text-white mb-4"
+                data-i18n="authTitle">เข้าสู่ระบบโหมดครู</h2>
+            <input type="email" id="auth-email" placeholder="Email"
+                   class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white mb-3 focus:border-blue-500 focus:outline-none">
+            <input type="password" id="auth-pass" placeholder="Password"
+                   class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white mb-4 focus:border-blue-500 focus:outline-none">
+            <div class="flex gap-2">
+                <button id="btn-login-submit"
+                        class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded transition font-medium"
+                        data-i18n="authLogin">เข้าสู่ระบบ</button>
+                <button class="btn-close-modal px-4 bg-slate-700 hover:bg-slate-600 text-white rounded transition"
+                        data-i18n="authCancel">ยกเลิก</button>
+            </div>
+            <p id="auth-error" class="text-red-400 text-xs mt-3 text-center"></p>
+        </div>
+
+        <!-- Challenge Management Modal -->
+        <div id="modal-challenge" class="bg-slate-800 border border-slate-600 p-6 rounded-xl shadow-2xl w-96 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white"
+                    data-i18n="challengeModalTitle">จัดการโจทย์</h2>
+                <button id="btn-ai-gen-challenge"
+                        class="text-xs ai-gradient text-white px-2 py-1 rounded shadow flex items-center gap-1 hover:opacity-90 transition font-medium">
+                    <span data-i18n="aiGenChallenge">✨ ใช้ AI สุ่มโจทย์</span>
+                </button>
+            </div>
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="text-xs text-slate-400 font-medium mb-1 block"
+                           data-i18n="challengeName">ชื่อโจทย์</label>
+                    <input type="text" id="ch-name"
+                           class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-blue-500 focus:outline-none"
+                           data-i18n-placeholder="challengeNamePlaceholder"
+                           placeholder="เช่น หยิบวัตถุตำแหน่ง (3, 2)">
+                </div>
+                <div class="flex gap-3">
+                    <div class="flex-1">
+                        <label class="text-xs text-slate-400 font-medium mb-1 block"
+                               data-i18n="challengeX">พิกัดแกน X (ซ้าย-ขวา)</label>
+                        <input type="number" id="ch-x" step="0.5"
+                               class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-blue-500 focus:outline-none">
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-xs text-slate-400 font-medium mb-1 block"
+                               data-i18n="challengeY">พิกัดแกน Y (หน้า-หลัง)</label>
+                        <input type="number" id="ch-y" step="0.5"
+                               class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-blue-500 focus:outline-none">
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-save-challenge"
+                        class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded transition font-medium"
+                        data-i18n="saveChallenge">บันทึกโจทย์</button>
+                <button class="btn-close-modal px-4 bg-slate-700 hover:bg-slate-600 text-white rounded transition"
+                        data-i18n="authCancel">ยกเลิก</button>
+            </div>
+        </div>
+
+        <!-- AI Response Modal -->
+        <div id="modal-ai" class="bg-slate-800 border border-purple-500 p-6 rounded-xl shadow-2xl w-[400px] hidden relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 ai-gradient"></div>
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <i class="ph ph-sparkle text-purple-400"></i>
+                <span class="ai-text">Gemini Tutor</span>
+            </h2>
+            <div id="ai-response-content"
+                 class="text-slate-300 text-sm leading-relaxed mb-6 max-h-60 overflow-y-auto custom-scrollbar"></div>
+            <button class="btn-close-modal w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-bold transition"
+                    data-i18n="aiClose">ปิดหน้าต่าง</button>
+        </div>
+
+        <!-- Success Modal (with Star Rating) -->
+        <div id="modal-success" class="bg-slate-800 border border-emerald-500 p-8 rounded-xl shadow-2xl w-96 hidden text-center">
+            <i class="ph-fill ph-check-circle text-6xl text-emerald-500 mb-2"></i>
+            <h2 class="text-2xl font-bold text-white mb-2"
+                data-i18n="successTitle">ภารกิจสำเร็จ!</h2>
+            <p class="text-slate-300 mb-4" id="success-desc"
+               data-i18n="successDesc">อัลกอริทึมของคุณหยิบวัตถุเป้าหมายได้สำเร็จ</p>
+            <div class="bg-slate-900 p-4 rounded-lg mb-6 border border-slate-700">
+                <div class="text-sm text-slate-400 mb-2">
+                    <span data-i18n="successEfficiency">ประสิทธิภาพโค้ด (ใช้</span>
+                    <span id="success-blocks" class="text-white font-bold">0</span>
+                    <span data-i18n="successUnit">คำสั่ง)</span>
+                </div>
+                <div class="flex justify-center gap-2 text-3xl star-rating" id="star-container">
+                    <i class="ph-fill ph-star"></i>
+                    <i class="ph-fill ph-star"></i>
+                    <i class="ph-fill ph-star"></i>
+                </div>
+                <div class="text-xs mt-2 text-slate-400" id="star-desc">...</div>
+            </div>
+            <button class="btn-close-modal w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-bold transition shadow-lg shadow-emerald-900/50"
+                    data-i18n="successBtn">ยอดเยี่ยม!</button>
+        </div>
+
+        <!-- API Key Settings Modal (NEW — Bug Fix #3) -->
+        <div id="modal-apikey" class="bg-slate-800 border border-purple-500 p-6 rounded-xl shadow-2xl w-96 hidden">
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <i class="ph ph-key text-purple-400"></i>
+                <span data-i18n="apiKeyTitle">ตั้งค่า Gemini API Key</span>
+            </h2>
+            <input type="password" id="input-apikey"
+                   class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white mb-3 focus:border-purple-500 focus:outline-none font-mono text-sm"
+                   data-i18n-placeholder="apiKeyPlaceholder"
+                   placeholder="วาง API Key ที่นี่...">
+            <p class="text-xs text-slate-400 mb-4">
+                <i class="ph ph-info"></i>
+                <span data-i18n="apiKeyInfo">รับ API Key ได้ที่ Google AI Studio</span>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener"
+                   class="text-purple-400 underline ml-1">aistudio.google.com</a>
+            </p>
+            <div class="flex gap-2">
+                <button id="btn-save-apikey"
+                        class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded transition font-medium"
+                        data-i18n="apiKeySave">บันทึก</button>
+                <button class="btn-close-modal px-4 bg-slate-700 hover:bg-slate-600 text-white rounded transition"
+                        data-i18n="authCancel">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!--  SCRIPTS                                     -->
+    <!-- ============================================ -->
+
+    <!-- i18n Data (regular script — works from file://) -->
+    <script src="js/i18n.js"></script>
+
+    <!-- App Logic (regular script — works from file://) -->
+    <script src="js/app.js"></script>
+
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <!-- Module Bridge — imports CDN modules and initializes the app -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Firebase SDK v11 (CDN imports)
+        import { initializeApp }
+            from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken,
+                 signInWithEmailAndPassword, onAuthStateChanged, signOut }
+            from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, addDoc, doc, deleteDoc }
+            from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Initialize Application — pass all CDN dependencies to app.js
+        RobotSim.init(THREE, OrbitControls, {
+            initializeApp,
+            getAuth, signInAnonymously, signInWithCustomToken,
+            signInWithEmailAndPassword, onAuthStateChanged, signOut,
+            getFirestore, collection, getDocs, addDoc, doc, deleteDoc
+        });
+    </script>
+
+</body>
+</html>
