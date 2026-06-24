@@ -589,11 +589,29 @@
                     '  </div>' +
                     '</div>';
 
-                // Teacher can delete non-default challenges
+                // Teacher can edit/delete non-default challenges
                 if (state.isTeacher && !ch.id.toString().startsWith('def_')) {
+                    var actionDiv = document.createElement('div');
+                    actionDiv.className = 'flex gap-1 z-10';
+
+                    var editBtn = document.createElement('button');
+                    editBtn.innerHTML = '<i class="ph ph-pencil-simple text-blue-400"></i>';
+                    editBtn.className = 'p-2 hover:bg-slate-700 rounded transition';
+                    editBtn.addEventListener('click', (function (challenge) {
+                        return function (e) {
+                            e.stopPropagation();
+                            document.getElementById('ch-name').value = challenge.name;
+                            document.getElementById('ch-x').value = challenge.targetX;
+                            document.getElementById('ch-y').value = challenge.targetY;
+                            state.editingChallengeId = challenge.id;
+                            openModal('modal-challenge');
+                        };
+                    })(ch));
+                    actionDiv.appendChild(editBtn);
+
                     var delBtn = document.createElement('button');
                     delBtn.innerHTML = '<i class="ph ph-trash text-red-400"></i>';
-                    delBtn.className = 'p-2 hover:bg-slate-700 rounded z-10 transition';
+                    delBtn.className = 'p-2 hover:bg-slate-700 rounded transition';
                     delBtn.addEventListener('click', (function (challenge) {
                         return async function (e) {
                             e.stopPropagation();
@@ -606,7 +624,8 @@
                             renderChallengeList();
                         };
                     })(ch));
-                    el.appendChild(delBtn);
+                    actionDiv.appendChild(delBtn);
+                    el.appendChild(actionDiv);
                 }
 
                 el.addEventListener('click', (function (cid) {
@@ -668,11 +687,25 @@
             var x = parseFloat(document.getElementById('ch-x').value) || 0;
             var y = parseFloat(document.getElementById('ch-y').value) || 0;
             try {
-                var docRef = await Firebase.addDoc(
-                    Firebase.collection(db, COLLECTION_PATH),
-                    { name: name, targetX: x, targetY: y }
-                );
-                state.challenges.push({ id: docRef.id, name: name, targetX: x, targetY: y });
+                if (state.editingChallengeId) {
+                    await Firebase.updateDoc(
+                        Firebase.doc(db, COLLECTION_PATH, state.editingChallengeId),
+                        { name: name, targetX: x, targetY: y }
+                    );
+                    var idx = state.challenges.findIndex(function(c) { return c.id === state.editingChallengeId; });
+                    if (idx > -1) {
+                        state.challenges[idx].name = name;
+                        state.challenges[idx].targetX = x;
+                        state.challenges[idx].targetY = y;
+                    }
+                    state.editingChallengeId = null;
+                } else {
+                    var docRef = await Firebase.addDoc(
+                        Firebase.collection(db, COLLECTION_PATH),
+                        { name: name, targetX: x, targetY: y }
+                    );
+                    state.challenges.push({ id: docRef.id, name: name, targetX: x, targetY: y });
+                }
                 renderChallengeList();
                 closeModals();
             } catch (error) {
@@ -729,6 +762,7 @@
 
         document.getElementById('btn-save-challenge').addEventListener('click', saveChallenge);
         document.getElementById('btn-add-challenge').addEventListener('click', function () {
+            state.editingChallengeId = null;
             document.getElementById('ch-name').value = '';
             document.getElementById('ch-x').value = '';
             document.getElementById('ch-y').value = '';
@@ -747,7 +781,7 @@
                 return null;
             }
 
-            var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=' + state.geminiApiKey;
+            var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + state.geminiApiKey;
             var payload = { contents: [{ parts: [{ text: prompt }] }] };
             if (systemPrompt) payload.systemInstruction = { parts: [{ text: systemPrompt }] };
             if (schema) payload.generationConfig = { responseMimeType: 'application/json', responseSchema: schema };
