@@ -782,9 +782,15 @@
             }
 
             var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + state.geminiApiKey;
-            var payload = { contents: [{ parts: [{ text: prompt }] }] };
-            if (systemPrompt) payload.systemInstruction = { parts: [{ text: systemPrompt }] };
-            if (schema) payload.generationConfig = { responseMimeType: 'application/json', responseSchema: schema };
+            var payload = { 
+                contents: [{ role: "user", parts: [{ text: prompt }] }] 
+            };
+            if (systemPrompt) {
+                payload.systemInstruction = { parts: [{ text: systemPrompt }] };
+            }
+            if (schema) {
+                payload.generationConfig = { responseMimeType: 'application/json', responseSchema: schema };
+            }
 
             var retries = 3, delay = 1000;
             while (retries > 0) {
@@ -794,7 +800,21 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    if (!res.ok) {
+                        var errText = await res.text();
+                        console.error('Gemini API Error:', res.status, errText);
+                        
+                        // Fallback: If HTTP 400, try simpler payload combining system & user prompt
+                        if (res.status === 400) {
+                            payload = { 
+                                contents: [{ role: "user", parts: [{ text: (systemPrompt ? "System: " + systemPrompt + "\n\nUser: " : "") + prompt }] }] 
+                            };
+                            if (schema) {
+                                payload.generationConfig = { responseMimeType: 'application/json', responseSchema: schema };
+                            }
+                        }
+                        throw new Error('HTTP ' + res.status);
+                    }
                     var data = await res.json();
                     return data.candidates && data.candidates[0] &&
                            data.candidates[0].content &&
@@ -802,6 +822,7 @@
                            data.candidates[0].content.parts[0] &&
                            data.candidates[0].content.parts[0].text;
                 } catch (error) {
+                    console.error('callGeminiAPI attempt failed:', error);
                     retries--;
                     if (retries === 0) return null;
                     await new Promise(function (r) { setTimeout(r, delay); });
